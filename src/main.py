@@ -1,4 +1,3 @@
-# main.py
 import logging
 import re
 from urllib.parse import urljoin
@@ -8,7 +7,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL
+from constants import BASE_DIR, MAIN_DOC_URL, PEPS_URL
 from outputs import control_output
 from utils import find_tag, get_response
 
@@ -54,16 +53,13 @@ def latest_versions(session):
             a_tags = ul.find_all('a')
             break
     else:
-        raise Exception('Ничего не нашлось')
+        raise Exception('Ничего не нашлось!')
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
         text_match = re.search(pattern, a_tag.text)
-        if text_match is not None:
-            version, status = text_match.groups()
-        else:
-            version, status = a_tag.text, ''
+        version, status = text_match.groups() if text_match else a_tag.text, ''
         results.append(
             (link, version, status)
         )
@@ -104,10 +100,28 @@ def download(session):
     logging.info(f'Архив был загружен и сохранён: {archive_path}')
 
 
+def pep(session):
+    """
+    <a class="pep reference internal" href="/pep-0005" title="PEP 5 – Guidelines for Language Evolution">5</a>
+    """
+    response = get_response(session, PEPS_URL)
+    if response is None:
+        return
+    soup = BeautifulSoup(response.text, 'lxml')
+    # pep_data = find_tag(soup, 'a', {'class': 'pep reference internal'})
+    section_numerical_index = find_tag(
+            soup, 'section', {'class': 'numerical-index'}
+    )
+    pep_data = section_numerical_index.find_all('a', {'class': 'pep reference internal'})
+    # ul_tags = sidebar.find_all('ul')
+    print(pep_data)
+
+
 MODE_TO_FUNCTION = {
     'whats-new': whats_new,
     'latest-versions': latest_versions,
     'download': download,
+    'pep': pep,
 }
 
 
