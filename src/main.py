@@ -8,9 +8,9 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL, PEPS_URL, PYTHON_DOCUMENT_TABLE_HEADER
+from constants import BASE_DIR, MAIN_DOC_URL, PEPS_URL, TABLE_HEADER_WHATS_NEW, TABLE_HEADER_LATEST_VERSIONS, DOWNLOADS_DIR
 from outputs import control_output
-from utils import find_tag, get_response, get_soup_by_url
+from utils import find_tag, find_tag_all, get_response, get_soup_by_url
 
 
 def whats_new(session):
@@ -21,35 +21,35 @@ def whats_new(session):
     sections_by_python = div_with_ul.find_all(
         'li', attrs={'class': 'toctree-l1'}
     )
-    results = [PYTHON_DOCUMENT_TABLE_HEADER]
+    results = []
     for section in tqdm(sections_by_python):
-        version_a_tag = find_tag(section, 'a')
-        href = version_a_tag['href']
-        version_link = urljoin(whats_new_url, href)
-        response = get_response(session, version_link)
-        if response is None:
+        try:
+            version_a_tag = find_tag(section, 'a')
+            href = version_a_tag['href']
+            version_link = urljoin(whats_new_url, href)        
+            soup = get_soup_by_url(session, version_link)
+            h1 = find_tag(soup, 'h1')
+            dl = find_tag(soup, 'dl')
+            dl_text = dl.text.replace('\n', ' ')
+            results.append(
+                (version_link, h1.text, dl_text)
+            )
+        except Exception:
             continue
-        soup = BeautifulSoup(response.text, 'lxml')
-        h1 = find_tag(soup, 'h1')
-        dl = find_tag(soup, 'dl')
-        dl_text = dl.text.replace('\n', ' ')
-        results.append(
-            (version_link, h1.text, dl_text)
-        )
-    return results
+    return [TABLE_HEADER_WHATS_NEW] + results if results else results
 
 
 def latest_versions(session):
     soup = get_soup_by_url(session, MAIN_DOC_URL)
     sidebar = find_tag(soup, 'div', {'class': 'sphinxsidebarwrapper'})
-    ul_tags = sidebar.find_all('ul')
+    ul_tags = find_tag_all(sidebar, 'ul')
     for ul in ul_tags:
         if 'All versions' in ul.text:
-            a_tags = ul.find_all('a')
+            a_tags = find_tag_all(ul, 'a')
             break
     else:
         raise Exception('Ничего не нашлось!')
-    results = [PYTHON_DOCUMENT_TABLE_HEADER]
+    results = [TABLE_HEADER_LATEST_VERSIONS]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
@@ -67,17 +67,13 @@ def download(session):
     table_tag = find_tag(soup, 'table',  attrs={'class': 'docutils'})
     pdf_a4_tag = find_tag(
         table_tag, 'a', {'href': re.compile(r'.+pdf-a4\.zip$')})
-    pdf_a4_link = pdf_a4_tag['href']
-    archive_url = urljoin(downloads_url, pdf_a4_link)
+    archive_url = urljoin(downloads_url, pdf_a4_tag['href'])
     filename = archive_url.split('/')[-1]
-    downloads_dir = BASE_DIR / 'downloads'
-    downloads_dir.mkdir(exist_ok=True)
-    archive_path = downloads_dir / filename
-    response = session.get(archive_url)
-    with open(archive_path, 'wb') as file:
-        file.write(response.content)
-    logging.info(f'Архив был загружен и сохранён: {archive_path}')
+    DOWNLOADS_DIR.mkdir(exist_ok=True)
+    archive_path = DOWNLOADS_DIR / filename
+    
 
+    
     download_table = find_tag(soup, 'table', {'class': 'docutils'})
     # r'.+pdf-a4\.zip$'
     pattern = r'href=\"(?P<url>.*pdf-a4.zip)\"'
@@ -109,7 +105,10 @@ def pep(session):
     https://www.scrapingbee.com/blog/python-web-scraping-beautiful-soup/
     https://docs-python.ru/packages/paket-beautifulsoup4-python/css-selektory/
     https://www.crummy.com/software/BeautifulSoup/bs4/doc/#css-selectors
-    
+
+    https://thecode.media/try-except/
+    https://docs.djangoproject.com/en/3.2/_modules/django/shortcuts/#get_object_or_404
+
     <a class="pep reference internal"
     href="/pep-0005" title="PEP 5 – Guidelines for Language Evolution">5</a>
     """
