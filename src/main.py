@@ -1,5 +1,6 @@
 import logging
 import re
+from collections import Counter
 from urllib.parse import urljoin
 
 import requests_cache
@@ -7,23 +8,20 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL, PEPS_URL
+from constants import BASE_DIR, MAIN_DOC_URL, PEPS_URL, PYTHON_DOCUMENT_TABLE_HEADER
 from outputs import control_output
-from utils import find_tag, get_response
+from utils import find_tag, get_response, get_soup_by_url
 
 
 def whats_new(session):
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
-    response = get_response(session, whats_new_url)
-    if response is None:
-        return None
-    soup = BeautifulSoup(response.text, features='lxml')
+    soup = get_soup_by_url(session, whats_new_url)
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
     sections_by_python = div_with_ul.find_all(
         'li', attrs={'class': 'toctree-l1'}
     )
-    results = [('Ссылка на документацию', 'Версия', 'Статус')]
+    results = [PYTHON_DOCUMENT_TABLE_HEADER]
     for section in tqdm(sections_by_python):
         version_a_tag = find_tag(section, 'a')
         href = version_a_tag['href']
@@ -42,10 +40,7 @@ def whats_new(session):
 
 
 def latest_versions(session):
-    response = get_response(session, MAIN_DOC_URL)
-    if response is None:
-        return None
-    soup = BeautifulSoup(response.text, 'lxml')
+    soup = get_soup_by_url(session, MAIN_DOC_URL)
     sidebar = find_tag(soup, 'div', {'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
     for ul in ul_tags:
@@ -54,7 +49,7 @@ def latest_versions(session):
             break
     else:
         raise Exception('Ничего не нашлось!')
-    results = [('Ссылка на документацию', 'Версия', 'Статус')]
+    results = [PYTHON_DOCUMENT_TABLE_HEADER]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
@@ -68,10 +63,7 @@ def latest_versions(session):
 
 def download(session):
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
-    response = get_response(session, downloads_url)
-    if response is None:
-        return
-    soup = BeautifulSoup(response.text, 'lxml')
+    soup = get_soup_by_url(session, downloads_url)
     table_tag = find_tag(soup, 'table',  attrs={'class': 'docutils'})
     pdf_a4_tag = find_tag(
         table_tag, 'a', {'href': re.compile(r'.+pdf-a4\.zip$')})
@@ -114,13 +106,14 @@ def download(session):
 
 def pep(session):
     """
+    https://www.scrapingbee.com/blog/python-web-scraping-beautiful-soup/
+    https://docs-python.ru/packages/paket-beautifulsoup4-python/css-selektory/
+    https://www.crummy.com/software/BeautifulSoup/bs4/doc/#css-selectors
+    
     <a class="pep reference internal"
     href="/pep-0005" title="PEP 5 – Guidelines for Language Evolution">5</a>
     """
-    response = get_response(session, PEPS_URL)
-    if response is None:
-        return
-    soup = BeautifulSoup(response.text, 'lxml')
+    soup = get_soup_by_url(session, PEPS_URL)
     section_numerical_index = find_tag(
             soup, 'section', {'class': 'numerical-index'}
     )

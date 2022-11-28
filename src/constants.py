@@ -22,3 +22,5 @@ EXPECTED_STATUS = {
     'W': ('Withdrawn',),
     '': ('Draft', 'Active'),
 }
+
+PYTHON_DOCUMENT_TABLE_HEADER = ('Ссылка на документацию', 'Версия', 'Статус')
