@@ -16,13 +16,13 @@ def whats_new(session):
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
     response = get_response(session, whats_new_url)
     if response is None:
-        return
+        return None
     soup = BeautifulSoup(response.text, features='lxml')
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
     sections_by_python = div_with_ul.find_all(
-            'li', attrs={'class': 'toctree-l1'}
-        )
+        'li', attrs={'class': 'toctree-l1'}
+    )
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     for section in tqdm(sections_by_python):
         version_a_tag = find_tag(section, 'a')
@@ -44,7 +44,7 @@ def whats_new(session):
 def latest_versions(session):
     response = get_response(session, MAIN_DOC_URL)
     if response is None:
-        return
+        return None
     soup = BeautifulSoup(response.text, 'lxml')
     sidebar = find_tag(soup, 'div', {'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
@@ -72,9 +72,21 @@ def download(session):
     if response is None:
         return
     soup = BeautifulSoup(response.text, 'lxml')
+    table_tag = find_tag(soup, 'table',  attrs={'class': 'docutils'})
+    pdf_a4_tag = find_tag(
+        table_tag, 'a', {'href': re.compile(r'.+pdf-a4\.zip$')})
+    pdf_a4_link = pdf_a4_tag['href']
+    archive_url = urljoin(downloads_url, pdf_a4_link)
+    filename = archive_url.split('/')[-1]
+    downloads_dir = BASE_DIR / 'downloads'
+    downloads_dir.mkdir(exist_ok=True)
+    archive_path = downloads_dir / filename
+    response = session.get(archive_url)
+    with open(archive_path, 'wb') as file:
+        file.write(response.content)
+    logging.info(f'Архив был загружен и сохранён: {archive_path}')
+
     download_table = find_tag(soup, 'table', {'class': 'docutils'})
-    if download_table is None:
-        raise Exception('Ссылки для загрузки не распарсены!')
     # r'.+pdf-a4\.zip$'
     pattern = r'href=\"(?P<url>.*pdf-a4.zip)\"'
     download_match = re.search(pattern, str(download_table))
@@ -102,19 +114,52 @@ def download(session):
 
 def pep(session):
     """
-    <a class="pep reference internal" href="/pep-0005" title="PEP 5 – Guidelines for Language Evolution">5</a>
+    <a class="pep reference internal"
+    href="/pep-0005" title="PEP 5 – Guidelines for Language Evolution">5</a>
     """
     response = get_response(session, PEPS_URL)
     if response is None:
         return
     soup = BeautifulSoup(response.text, 'lxml')
-    # pep_data = find_tag(soup, 'a', {'class': 'pep reference internal'})
     section_numerical_index = find_tag(
             soup, 'section', {'class': 'numerical-index'}
     )
-    pep_data = section_numerical_index.find_all('a', {'class': 'pep reference internal'})
-    # ul_tags = sidebar.find_all('ul')
-    print(pep_data)
+    pep_data = section_numerical_index.find_all(
+            'a', {'class': 'pep reference internal'}
+    )
+
+    pep_url = MAIN_PEP_URL
+    response = get_response(session, pep_url)
+    if response is None:
+        return None
+    soup = BeautifulSoup(response.text, features='lxml')
+    num_index = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
+    num_tbody = find_tag(num_index, 'tbody')
+    num_trs = num_tbody.find_all('tr')
+    results = {}
+    total = 0
+    for tr in tqdm(num_trs):
+        status_key = find_tag(tr, 'td').text[1:]
+        expected_status = EXPECTED_STATUS.get(status_key, [])
+        if not expected_status:
+            logging.info(f'Неизвестный ключ статуса: \'{status_key}\'')
+        pep_link = urljoin(pep_url, find_tag(tr, 'a')['href'])
+        response = get_response(session, pep_link)
+        if response is None:
+            continue
+        soup = BeautifulSoup(response.text, 'lxml')
+        status = find_tag(soup, text='Status').find_next('dd').text
+        if status not in expected_status:
+            logging.info(
+                f'Несовпадающие статусы: {pep_link} '
+                f'Статус в карточке: {status} '
+                f'Ожидаемые статусы: {expected_status}')
+        results[status] = results.get(status, 0) + 1
+        total += 1
+    return (
+        [('Статус', 'Количество')]
+        + list(results.items())
+        + [('Total', total)])
 
 
 MODE_TO_FUNCTION = {
