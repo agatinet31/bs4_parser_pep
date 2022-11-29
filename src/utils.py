@@ -7,44 +7,39 @@ from exceptions import ParserFindTagException
 
 
 def get_response(session, url):
-    """
-    class:`Response` object
-    if response.code is None:
-            error_msg = f'Не найден тег {tag} {attrs}'
-            logging.error(error_msg, stack_info=True)
-            raise ParserFindTagException(error_msg)
-            RequestException
-    """
+    """Загрузка данных ресурса по url."""
     try:
         response = session.get(url)
-        response.encoding = 'utf-8'
+        # response.raise_for_status()
         return response
     except RequestException:
         logging.exception(
-            f'Возникла ошибка при загрузке страницы {url}',
+            f'Возникла ошибка при загрузке ресурса по адресу: {url}',
             stack_info=True
         )
         raise
 
-    
+
 def download_file(session, url, file_path):
-    try:
-        response = session.get(archive_url)
-        with open(archive_path, 'wb') as file:
-            file.write(response.content)
-        logging.info(f'Архив был загружен и сохранён: {archive_path}')
-    except RequestException:
-        logging.exception(
-            f'Возникла ошибка при загрузке архива {archive_url}',
-            stack_info=True
-        )
+    """Загрузка файла по url."""
+    response = get_response(session, url)
+    with open(file_path, 'wb') as file:
+        file.write(response.content)
+    logging.info(f'Файл был загружен и сохранён: {file_path}')
+
+
+def get_soup_by_url(session, url):
+    """Возвращает объект BeautifulSoup для страницы по url."""
+    response = get_response(session, url)
+    response.encoding = 'utf-8'
+    return BeautifulSoup(response.text, features='lxml')
 
 
 def find_tag_all(soup, tag=None, attrs={}, recursive=True, text=None,
                  limit=None, **kwargs):
     """Возвращает список элементов по тегу."""
     searched_tag = soup.find_all(tag, attrs, recursive, text, limit, **kwargs)
-    if searched_tag is None:
+    if not searched_tag:
         error_msg = f'Не найден тег {tag} {attrs}'
         logging.error(error_msg, stack_info=True)
         raise ParserFindTagException(error_msg)
@@ -54,9 +49,5 @@ def find_tag_all(soup, tag=None, attrs={}, recursive=True, text=None,
 def find_tag(soup, tag=None, attrs={}, recursive=True, text=None,
              **kwargs):
     """Возвращает первый найденный элемент по тегу."""
-    return find_tag_all(tag, attrs, recursive, text, 1, **kwargs)[0]
-
-
-def get_soup_by_url(session, url):
-    response = get_response(session, url)
-    return BeautifulSoup(response.text, features='lxml')
+    tag_all = find_tag_all(soup, tag, attrs, recursive, text, 1, **kwargs)
+    return tag_all[0] if tag_all else None
