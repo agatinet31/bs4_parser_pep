@@ -4,15 +4,14 @@ from collections import Counter
 from urllib.parse import urljoin
 
 import requests_cache
-from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import (BASE_DIR, DOWNLOADS_DIR, MAIN_DOC_URL, PEPS_URL,
+from constants import (BASE_DIR, DOWNLOADS_DIR, EXPECTED_STATUS, MAIN_DOC_URL,
+                       PEP_STATUS_PATTERN, PEPS_URL,
                        TABLE_HEADER_LATEST_VERSIONS, TABLE_HEADER_WHATS_NEW)
 from outputs import control_output
-from utils import (download_file, find_tag, find_tag_all, get_response,
-                   get_soup_by_url)
+from utils import download_file, find_tag, find_tag_all, get_soup_by_url
 
 
 def whats_new(session):
@@ -85,57 +84,37 @@ def download(session):
 
 
 def pep(session):
-    """
-    https://www.scrapingbee.com/blog/python-web-scraping-beautiful-soup/
-    https://docs-python.ru/packages/paket-beautifulsoup4-python/css-selektory/
-    https://www.crummy.com/software/BeautifulSoup/bs4/doc/#css-selectors
-
-    https://thecode.media/try-except/
-    https://docs.djangoproject.com/en/3.2/_modules/django/shortcuts/#get_object_or_404
-
-    <a class="pep reference internal"
-    href="/pep-0005" title="PEP 5 – Guidelines for Language Evolution">5</a>
-    """
+    """Возвращает количество PEP в каждом статусе."""
     soup = get_soup_by_url(session, PEPS_URL)
-    section_numerical_index = find_tag(
-            soup, 'section', {'class': 'numerical-index'}
-    )
-    pep_data = section_numerical_index.find_all(
-            'a', {'class': 'pep reference internal'}
-    )
-
-    pep_url = MAIN_PEP_URL
-    response = get_response(session, pep_url)
-    if response is None:
-        return None
-    soup = BeautifulSoup(response.text, features='lxml')
-    num_index = find_tag(soup, 'section', attrs={'id': 'numerical-index'})
-    num_tbody = find_tag(num_index, 'tbody')
-    num_trs = num_tbody.find_all('tr')
-    results = {}
-    total = 0
-    for tr in tqdm(num_trs):
-        status_key = find_tag(tr, 'td').text[1:]
-        expected_status = EXPECTED_STATUS.get(status_key, [])
-        if not expected_status:
-            logging.info(f'Неизвестный ключ статуса: \'{status_key}\'')
-        pep_link = urljoin(pep_url, find_tag(tr, 'a')['href'])
-        response = get_response(session, pep_link)
-        if response is None:
-            continue
-        soup = BeautifulSoup(response.text, 'lxml')
-        status = find_tag(soup, text='Status').find_next('dd').text
-        if status not in expected_status:
-            logging.info(
-                f'Несовпадающие статусы: {pep_link} '
-                f'Статус в карточке: {status} '
-                f'Ожидаемые статусы: {expected_status}')
-        results[status] = results.get(status, 0) + 1
-        total += 1
-    return (
-        [('Статус', 'Количество')]
-        + list(results.items())
-        + [('Total', total)])
+    peps_records = soup.select('#numerical-index tbody tr')
+    peps_status_count = []
+    for pep in tqdm(peps_records):
+        try:
+            href = find_tag(
+                pep,
+                'a',
+                attrs={'class': 'pep reference internal', 'href': True}
+            )['href']
+            pep_url = urljoin(PEPS_URL, href)
+            pep_soup = get_soup_by_url(session, pep_url)
+            pep_reference = find_tag(
+                pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
+            )
+            status = PEP_STATUS_PATTERN.search(
+                pep_reference.text
+            ).group('status')
+            peps_status_count[status] += 1
+            preview_status = find_tag(pep, 'td').text[1:]
+            if preview_status and EXPECTED_STATUS[] != :
+            if status not in expected_status:
+                logging.info(UNEXPECTED_STATUSES.format(*item))
+        except Exception:
+            continue        
+    return [
+        ('Статус', 'Количество'),
+        *sorted(results.items()),
+        ('Total', sum(results.values())),
+    ]
 
 
 MODE_TO_FUNCTION = {

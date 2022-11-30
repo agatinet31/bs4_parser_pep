@@ -10,7 +10,7 @@ def get_response(session, url):
     """Загрузка данных ресурса по url."""
     try:
         response = session.get(url)
-        # response.raise_for_status()
+        response.raise_for_status()
         return response
     except RequestException:
         logging.exception(
@@ -35,11 +35,10 @@ def get_soup_by_url(session, url):
     return BeautifulSoup(response.text, features='lxml')
 
 
-def find_tag_all(soup, *args, **kwargs):
+def find_tag_all(soup, tag=None, *args, **kwargs):
     """Возвращает список элементов по тегу."""
-    searched_tag = soup.find_all(*args, **kwargs)
+    searched_tag = soup.find_all(tag, *args, **kwargs)
     if not searched_tag:
-        tag = kwargs.get('tag', None)
         attrs = kwargs.get('attrs', None)
         error_msg = f'Не найден тег {tag} {attrs}'
         logging.error(error_msg, stack_info=True)
@@ -47,7 +46,7 @@ def find_tag_all(soup, *args, **kwargs):
     return searched_tag
 
 
-def find_tag(soup, *args, **kwargs):
+def find_tag(soup, tag=None, *args, **kwargs):
     """Возвращает первый найденный элемент по тегу."""
-    tag_all = find_tag_all(soup, *args, **kwargs)
+    tag_all = find_tag_all(soup, tag, *args, **kwargs)
     return tag_all[0] if tag_all else None

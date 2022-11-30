@@ -7,22 +7,17 @@ from prettytable import PrettyTable
 from constants import BASE_DIR, DATETIME_FORMAT
 
 
-def control_output(results, cli_args):
-    output = cli_args.output
-    if output == 'pretty':
-        pretty_output(results)
-    elif output == 'file':
-        file_output(results, cli_args)
-    else:
-        default_output(results)
+def default_output(results, *args):
+    """Дефолтный вывод в консоль."""
+    print(
+        '\n'.join(
+            ' '.join(value) for value in results
+        )
+    )
 
 
-def default_output(results):
-    for row in results:
-        print(*row)
-
-
-def pretty_output(results):
+def pretty_output(results, *args):
+    """Вывод результата в виде таблицы."""
     table = PrettyTable()
     table.field_names = results[0]
     table.align = 'l'
@@ -31,6 +26,7 @@ def pretty_output(results):
 
 
 def file_output(results, cli_args):
+    """Запись результатов в файл."""
     results_dir = BASE_DIR / 'results'
     results_dir.mkdir(exist_ok=True)
     parser_mode = cli_args.mode
@@ -42,3 +38,14 @@ def file_output(results, cli_args):
         writer = csv.writer(f, dialect='unix')
         writer.writerows(results)
     logging.info(f'Файл с результатами был сохранён: {file_path}')
+
+
+OUTPUT_TO_FUNCTION = {
+    'pretty': pretty_output,
+    'file': file_output,
+    'console': default_output,
+}
+
+
+def control_output(results, cli_args):
+    OUTPUT_TO_FUNCTION.get(cli_args.output, default_output)(results, cli_args)

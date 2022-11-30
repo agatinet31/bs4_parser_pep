@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
@@ -28,6 +29,8 @@ EXPECTED_STATUS = {
     'W': ('Withdrawn',),
     '': ('Draft', 'Active'),
 }
+
+PEP_STATUS_PATTERN = re.compile('Status.*\n.*<abbr.*>(?P<status>.*)</abbr>')
 
 TABLE_HEADER_LATEST_VERSIONS = ('Ссылка на документацию', 'Версия', 'Статус')
 
