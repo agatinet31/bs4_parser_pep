@@ -35,19 +35,19 @@ def get_soup_by_url(session, url):
     return BeautifulSoup(response.text, features='lxml')
 
 
-def find_tag_all(soup, tag=None, attrs={}, recursive=True, text=None,
-                 limit=None, **kwargs):
+def find_tag_all(soup, *args, **kwargs):
     """Возвращает список элементов по тегу."""
-    searched_tag = soup.find_all(tag, attrs, recursive, text, limit, **kwargs)
+    searched_tag = soup.find_all(*args, **kwargs)
     if not searched_tag:
+        tag = kwargs.get('tag', None)
+        attrs = kwargs.get('attrs', None)
         error_msg = f'Не найден тег {tag} {attrs}'
         logging.error(error_msg, stack_info=True)
         raise ParserFindTagException(error_msg)
     return searched_tag
 
 
-def find_tag(soup, tag=None, attrs={}, recursive=True, text=None,
-             **kwargs):
+def find_tag(soup, *args, **kwargs):
     """Возвращает первый найденный элемент по тегу."""
-    tag_all = find_tag_all(soup, tag, attrs, recursive, text, 1, **kwargs)
+    tag_all = find_tag_all(soup, *args, **kwargs)
     return tag_all[0] if tag_all else None

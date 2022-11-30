@@ -94,7 +94,7 @@ def test_download(monkeypatch, tmp_path, mock_session):
         directory for directory in mock_base_dir.iterdir()
         if directory.is_dir() and directory.name == 'downloads'
     ]
-    print(mock_base_dir)
+
     assert len(dirs) != 0, (
         'Убедитесь что для хранения архивов с документацией Python в '
         'директории `src` создаётся директория `downloads` '

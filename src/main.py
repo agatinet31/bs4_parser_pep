@@ -8,9 +8,11 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
-from constants import BASE_DIR, MAIN_DOC_URL, PEPS_URL, TABLE_HEADER_WHATS_NEW, TABLE_HEADER_LATEST_VERSIONS, DOWNLOADS_DIR
+from constants import (BASE_DIR, DOWNLOADS_DIR, MAIN_DOC_URL, PEPS_URL,
+                       TABLE_HEADER_LATEST_VERSIONS, TABLE_HEADER_WHATS_NEW)
 from outputs import control_output
-from utils import find_tag, find_tag_all, get_response, get_soup_by_url, download_file
+from utils import (download_file, find_tag, find_tag_all, get_response,
+                   get_soup_by_url)
 
 
 def whats_new(session):
@@ -76,8 +78,9 @@ def download(session):
     )
     archive_url = urljoin(downloads_url, pdf_a4_tag['href'])
     filename = archive_url.split('/')[-1]
-    DOWNLOADS_DIR.mkdir(exist_ok=True)
-    archive_path = DOWNLOADS_DIR / filename
+    download_path = BASE_DIR / DOWNLOADS_DIR
+    download_path.mkdir(exist_ok=True)
+    archive_path = download_path / filename
     download_file(session, archive_url, archive_path)
 
 

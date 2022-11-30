@@ -10,13 +10,13 @@ DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 
 DT_FORMAT = '%d.%m.%Y %H:%M:%S'
 
-LOG_DIR = BASE_DIR / 'logs'
+LOG_PATH = BASE_DIR / 'logs'
 
-LOG_FILE = LOG_DIR / 'parser.log'
+LOG_FILE = LOG_PATH / 'parser.log'
 
 LOG_FORMAT = '"%(asctime)s - [%(levelname)s] - %(message)s"'
 
-DOWNLOADS_DIR = BASE_DIR / 'downloads'
+DOWNLOADS_DIR = 'downloads'
 
 EXPECTED_STATUS = {
     'A': ('Active', 'Accepted'),
