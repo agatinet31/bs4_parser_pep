@@ -87,7 +87,7 @@ def pep(session):
     """Возвращает количество PEP в каждом статусе."""
     soup = get_soup_by_url(session, PEPS_URL)
     peps_records = soup.select('#numerical-index tbody tr')
-    peps_status_count = []
+    peps_status_count = {}
     for pep in tqdm(peps_records):
         try:
             href = find_tag(
@@ -97,10 +97,25 @@ def pep(session):
             )['href']
             pep_url = urljoin(PEPS_URL, href)
             pep_soup = get_soup_by_url(session, pep_url)
+            '#pep-content .'
             pep_reference = find_tag(
                 pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
             )
             status = PEP_STATUS_PATTERN.search(
+                pep_reference.text
+            ).group('status')
+            """
+            href = find_tag(
+                pep,
+                'a',
+                attrs={'class': 'pep reference internal', 'href': True}
+            )['href']
+
+            pep_reference = find_tag(
+                pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
+            )
+            status = find_tag(pep_reference, text='Status')            
+            PEP_STATUS_PATTERN.search(
                 pep_reference.text
             ).group('status')
             peps_status_count[status] += 1
@@ -108,13 +123,17 @@ def pep(session):
             if preview_status and EXPECTED_STATUS[] != :
             if status not in expected_status:
                 logging.info(UNEXPECTED_STATUSES.format(*item))
+
+
+            [
+                ('Статус', 'Количество'),
+                *sorted(results.items()),
+                ('Total', sum(results.values())),
+            ]
+            """
         except Exception:
             continue        
-    return [
-        ('Статус', 'Количество'),
-        *sorted(results.items()),
-        ('Total', sum(results.values())),
-    ]
+    return None
 
 
 MODE_TO_FUNCTION = {

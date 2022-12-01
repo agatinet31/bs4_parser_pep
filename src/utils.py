@@ -1,4 +1,5 @@
 import logging
+import re
 
 from bs4 import BeautifulSoup
 from requests import RequestException
@@ -32,7 +33,8 @@ def get_soup_by_url(session, url):
     """Возвращает объект BeautifulSoup для страницы по url."""
     response = get_response(session, url)
     response.encoding = 'utf-8'
-    return BeautifulSoup(response.text, features='lxml')
+    html = re.sub(r'>\s+<', '><', response.text.replace('\n', ''))    
+    return BeautifulSoup(html, features='lxml')
 
 
 def find_tag_all(soup, tag=None, *args, **kwargs):
