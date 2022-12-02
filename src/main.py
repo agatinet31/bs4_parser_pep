@@ -96,15 +96,20 @@ def pep(session):
                 attrs={'class': 'pep reference internal', 'href': True}
             )['href']
             pep_url = urljoin(PEPS_URL, href)
-            pep_soup = get_soup_by_url(session, pep_url)
-            '#pep-content .'
+            pep_soup = get_soup_by_url(session, pep_url)            
+            pep_reference = pep_soup.select_one(
+                '[class="rfc2822 field-list simple"] text=Status + abbr'
+            )
+            status = PEP_STATUS_PATTERN.search(
+                pep_reference.__str__()
+            ).group('status')
+            """
             pep_reference = find_tag(
                 pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
             )
-            status = PEP_STATUS_PATTERN.search(
-                pep_reference.text
-            ).group('status')
-            """
+            pep_reference = pep_soup.select_one(
+                '[class="rfc2822 field-list simple"] abbr'
+            )
             href = find_tag(
                 pep,
                 'a',
