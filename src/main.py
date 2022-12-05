@@ -98,12 +98,25 @@ def pep(session):
             pep_url = urljoin(PEPS_URL, href)
             pep_soup = get_soup_by_url(session, pep_url)            
             pep_reference = pep_soup.select_one(
-                '[class="rfc2822 field-list simple"] text=Status + abbr'
+                '[class="rfc2822 field-list simple"] > .field-even:contains("Status") ~ abbr'
             )
+            pep_reference = find_tag(
+                pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
+            )
+            PEP_STATUS_PATTERN.search(
+                pep_soup.text
+            ).groups()[0]
             status = PEP_STATUS_PATTERN.search(
-                pep_reference.__str__()
+                pep_reference
             ).group('status')
+            pep_status_soup = find_tag(
+                pep_reference, 'dt'
+            )
+            status = pep_status_soup.next_sibling.text
             """
+            pep_reference = pep_soup.select_one(
+                '[class="rfc2822 field-list simple"] .field-even:contains("Status")'
+            )
             pep_reference = find_tag(
                 pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
             )
