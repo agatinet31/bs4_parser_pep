@@ -30,8 +30,6 @@ EXPECTED_STATUS = {
     '': ('Draft', 'Active'),
 }
 
-PEP_STATUS_PATTERN = re.compile('Status.*\n.*<abbr.*>(?P<status>.*)</abbr>')
-
 TABLE_HEADER_LATEST_VERSIONS = ('Ссылка на документацию', 'Версия', 'Статус')
 
 TABLE_HEADER_WHATS_NEW = ('Ссылка на статью', 'Заголовок', 'Редактор, Автор')

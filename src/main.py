@@ -8,10 +8,11 @@ from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
 from constants import (BASE_DIR, DOWNLOADS_DIR, EXPECTED_STATUS, MAIN_DOC_URL,
-                       PEP_STATUS_PATTERN, PEPS_URL,
-                       TABLE_HEADER_LATEST_VERSIONS, TABLE_HEADER_WHATS_NEW)
+                       PEPS_URL, TABLE_HEADER_LATEST_VERSIONS,
+                       TABLE_HEADER_WHATS_NEW)
 from outputs import control_output
-from utils import download_file, find_tag, find_tag_all, get_soup_by_url
+from utils import (download_file, find_tag, find_tag_all, get_soup_by_url,
+                   select_one_tag, select_tag_all)
 
 
 def whats_new(session):
@@ -85,8 +86,10 @@ def download(session):
 
 def pep(session):
     """Возвращает количество PEP в каждом статусе."""
-    soup = get_soup_by_url(session, PEPS_URL)
-    peps_records = soup.select('#numerical-index tbody tr')
+    soup = get_soup_by_url(session, PEPS_URL)       
+    peps_records = select_tag_all(
+        soup, '#numerical-index tbody > tr'
+    )
     peps_status_count = {}
     for pep in tqdm(peps_records):
         try:
@@ -95,52 +98,22 @@ def pep(session):
                 'a',
                 attrs={'class': 'pep reference internal', 'href': True}
             )['href']
+            preview_status = select_one_tag(
+                pep, 'tr:nth-child(1) > td:nth-child(1) > abbr'
+            ).text[1:]
             pep_url = urljoin(PEPS_URL, href)
             pep_soup = get_soup_by_url(session, pep_url)            
-            pep_reference = pep_soup.select_one(
-                '[class="rfc2822 field-list simple"] > .field-even:contains("Status") ~ abbr'
-            )
-            pep_reference = find_tag(
-                pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
-            )
-            PEP_STATUS_PATTERN.search(
-                pep_soup.text
-            ).groups()[0]
-            status = PEP_STATUS_PATTERN.search(
-                pep_reference
-            ).group('status')
-            pep_status_soup = find_tag(
-                pep_reference, 'dt'
-            )
-            status = pep_status_soup.next_sibling.text
-            """
-            pep_reference = pep_soup.select_one(
-                '[class="rfc2822 field-list simple"] .field-even:contains("Status")'
-            )
-            pep_reference = find_tag(
-                pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
-            )
-            pep_reference = pep_soup.select_one(
-                '[class="rfc2822 field-list simple"] abbr'
-            )
-            href = find_tag(
-                pep,
-                'a',
-                attrs={'class': 'pep reference internal', 'href': True}
-            )['href']
-
-            pep_reference = find_tag(
-                pep_soup, 'dl', {'class': 'rfc2822 field-list simple'}
-            )
-            status = find_tag(pep_reference, text='Status')            
-            PEP_STATUS_PATTERN.search(
-                pep_reference.text
-            ).group('status')
-            peps_status_count[status] += 1
+            pep_status = select_one_tag(
+                pep_soup, '#pep-content > dl > dd:nth-child(4) > abbr'
+            ).text
+            peps_status_count[pep_status] += 1
             preview_status = find_tag(pep, 'td').text[1:]
             if preview_status and EXPECTED_STATUS[] != :
-            if status not in expected_status:
+            if status not in EXPECTED_STATUS:
                 logging.info(UNEXPECTED_STATUSES.format(*item))
+            """                        
+            
+            
 
 
             [
