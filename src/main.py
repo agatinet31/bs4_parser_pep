@@ -8,8 +8,9 @@ from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
 from constants import (BASE_DIR, DOWNLOADS_DIR, EXPECTED_STATUS, MAIN_DOC_URL,
-                       PEPS_URL, TABLE_HEADER_LATEST_VERSIONS,
+                       PEPS_URL, TABLE_HEADER_LATEST_VERSIONS, PYTHON_VERSION_AND_STATUS_PATTERN, 
                        TABLE_HEADER_WHATS_NEW)
+from exceptions import PEPVersionException, PEPStatusException
 from outputs import control_output
 from utils import (download_file, find_tag, find_tag_all, get_soup_by_url,
                    select_one_tag, select_tag_all)
@@ -51,12 +52,15 @@ def latest_versions(session):
             a_tags = find_tag_all(ul, 'a', href=True)
             break
     else:
-        raise Exception('С сервера возвращен пустой список версий!')
+        err_msg = 'С сервера возвращен пустой список версий!'
+        logging.error(err_msg)
+        raise PEPVersionException(err_msg)
     results = []
-    pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
-        text_match = re.search(pattern, a_tag.text)
+        text_match = re.search(
+            PYTHON_VERSION_AND_STATUS_PATTERN, a_tag.text
+        )
         version, status = (
                 text_match.groups()
                 if text_match else
@@ -98,7 +102,7 @@ def pep(session):
                 'a',
                 attrs={'class': 'pep reference internal', 'href': True}
             )['href']
-            preview_status = select_one_tag(
+            pep_status_key = select_one_tag(
                 pep, 'tr:nth-child(1) > td:nth-child(1) > abbr'
             ).text[1:]
             pep_url = urljoin(PEPS_URL, href)
@@ -107,15 +111,15 @@ def pep(session):
                 pep_soup, '#pep-content > dl > dd:nth-child(4) > abbr'
             ).text
             peps_status_count[pep_status] += 1
-            preview_status = find_tag(pep, 'td').text[1:]
-            if preview_status and EXPECTED_STATUS[] != :
-            if status not in EXPECTED_STATUS:
-                logging.info(UNEXPECTED_STATUSES.format(*item))
-            """                        
-            
-            
-
-
+            expected_status = EXPECTED_STATUS.get(pep_status_key, None)
+            if pep_status not in expected_status:
+                logging.info(
+                    'Несовпадающие статусы:\n',
+                    f'{pep_url}\n',
+                    f'Статус в карточке: {pep_status}\n',
+                    f'Ожидаемые статусы: {expected_status}'
+                )
+            """
             [
                 ('Статус', 'Количество'),
                 *sorted(results.items()),

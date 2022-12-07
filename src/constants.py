@@ -30,6 +30,10 @@ EXPECTED_STATUS = {
     '': ('Draft', 'Active'),
 }
 
+VALID_STATUS = {status for status in EXPECTED_STATUS.values()}
+
+PYTHON_VERSION_AND_STATUS_PATTERN = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
+
 TABLE_HEADER_LATEST_VERSIONS = ('Ссылка на документацию', 'Версия', 'Статус')
 
 TABLE_HEADER_WHATS_NEW = ('Ссылка на статью', 'Заголовок', 'Редактор, Автор')

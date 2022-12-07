@@ -4,7 +4,7 @@ import re
 from bs4 import BeautifulSoup
 from requests import RequestException
 
-from exceptions import DOMQueryingException, ParserFindTagException
+from exceptions import DOMQueryingException, ParserFindTagException, PEPStatusException
 
 
 def get_response(session, url):
