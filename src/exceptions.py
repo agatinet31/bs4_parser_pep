@@ -13,6 +13,11 @@ class PEPVersionException(Exception):
     pass
 
 
-class PEPStatusException(Exception):
-    """Вызывается, когда парсер возвращает невалидный статус."""
+class PEPStatusNameException(Exception):
+    """Вызывается, когда парсер возвращает невалидное имя статуса."""
+    pass
+
+
+class PEPStatusKeyException(Exception):
+    """Вызывается, когда парсер возвращает невалидный ключ статуса."""
     pass

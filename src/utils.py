@@ -4,7 +4,7 @@ import re
 from bs4 import BeautifulSoup
 from requests import RequestException
 
-from exceptions import DOMQueryingException, ParserFindTagException, PEPStatusException
+from exceptions import DOMQueryingException, ParserFindTagException
 
 
 def get_response(session, url):
@@ -30,10 +30,10 @@ def download_file(session, url, file_path):
 
 
 def get_soup_by_url(session, url):
-    """Возвращает объект BeautifulSoup для страницы по url."""    
+    """Возвращает объект BeautifulSoup для страницы по url."""
     response = get_response(session, url)
     response.encoding = 'utf-8'
-    html = re.sub(r'>\s+<', '><', response.text.replace('\n', ''))    
+    html = re.sub(r'>\s+<', '><', response.text.replace('\n', ''))
     return BeautifulSoup(html, 'lxml')
 
 
@@ -42,7 +42,10 @@ def find_tag_all(soup, tag=None, *args, **kwargs):
     searched_tag = soup.find_all(tag, *args, **kwargs)
     if not searched_tag:
         attrs = kwargs.get('attrs', None)
-        error_msg = f'Не найден тег {tag} {attrs}'
+        error_msg = (
+            f'Не найден тег {tag} {attrs}\n'
+            f'Содержимое soup: {soup}'
+        )
         logging.error(error_msg, stack_info=True)
         raise ParserFindTagException(error_msg)
     return searched_tag
@@ -58,7 +61,10 @@ def select_tag_all(soup, selector, namespaces=None, limit=None, **kwargs):
     """Возвращает список элементов по CSS селектору."""
     select_tag = soup.select(selector, namespaces, limit, **kwargs)
     if not select_tag:
-        error_msg = f'Не найдены теги по CSS селектору: {selector}'
+        error_msg = (
+            f'Не найдены теги по CSS селектору: {selector}\n'
+            f'Содержимое soup: {soup}'
+        )
         logging.error(error_msg, stack_info=True)
         raise DOMQueryingException(error_msg)
     return select_tag

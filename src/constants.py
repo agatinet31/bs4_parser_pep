@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
@@ -30,10 +29,16 @@ EXPECTED_STATUS = {
     '': ('Draft', 'Active'),
 }
 
-VALID_STATUS = {status for status in EXPECTED_STATUS.values()}
+VALID_STATUS = {
+    status for statuses in EXPECTED_STATUS.values() for status in statuses
+}
 
-PYTHON_VERSION_AND_STATUS_PATTERN = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
+VERSION_AND_STATUS_PATTERN = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
 
 TABLE_HEADER_LATEST_VERSIONS = ('Ссылка на документацию', 'Версия', 'Статус')
 
 TABLE_HEADER_WHATS_NEW = ('Ссылка на статью', 'Заголовок', 'Редактор, Автор')
+
+TABLE_HEADER_STATUS_COUNT = ('Статус', 'Количество')
+
+TABLE_FOOTER_STATUS_TOTAL = 'Total'

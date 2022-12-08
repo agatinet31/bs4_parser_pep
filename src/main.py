@@ -1,16 +1,21 @@
 import logging
 import re
-from collections import Counter
+from collections import defaultdict
 from urllib.parse import urljoin
 
 import requests_cache
+from requests import RequestException
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
 from constants import (BASE_DIR, DOWNLOADS_DIR, EXPECTED_STATUS, MAIN_DOC_URL,
-                       PEPS_URL, TABLE_HEADER_LATEST_VERSIONS, PYTHON_VERSION_AND_STATUS_PATTERN, 
-                       TABLE_HEADER_WHATS_NEW)
-from exceptions import PEPVersionException, PEPStatusException
+                       PEPS_URL, TABLE_FOOTER_STATUS_TOTAL,
+                       TABLE_HEADER_LATEST_VERSIONS, TABLE_HEADER_STATUS_COUNT,
+                       TABLE_HEADER_WHATS_NEW, VALID_STATUS,
+                       VERSION_AND_STATUS_PATTERN)
+from exceptions import (DOMQueryingException, ParserFindTagException,
+                        PEPStatusKeyException, PEPStatusNameException,
+                        PEPVersionException)
 from outputs import control_output
 from utils import (download_file, find_tag, find_tag_all, get_soup_by_url,
                    select_one_tag, select_tag_all)
@@ -37,8 +42,8 @@ def whats_new(session):
             results.append(
                 (version_link, h1.text, dl_text)
             )
-        except Exception:
-            continue
+        except (ParserFindTagException, RequestException):
+            pass
     return [TABLE_HEADER_WHATS_NEW] + results if results else results
 
 
@@ -59,7 +64,7 @@ def latest_versions(session):
     for a_tag in a_tags:
         link = a_tag['href']
         text_match = re.search(
-            PYTHON_VERSION_AND_STATUS_PATTERN, a_tag.text
+            VERSION_AND_STATUS_PATTERN, a_tag.text
         )
         version, status = (
                 text_match.groups()
@@ -90,45 +95,60 @@ def download(session):
 
 def pep(session):
     """Возвращает количество PEP в каждом статусе."""
-    soup = get_soup_by_url(session, PEPS_URL)       
+    soup = get_soup_by_url(session, PEPS_URL)
     peps_records = select_tag_all(
         soup, '#numerical-index tbody > tr'
     )
-    peps_status_count = {}
+    peps_status_count = defaultdict(int)
     for pep in tqdm(peps_records):
         try:
-            href = find_tag(
-                pep,
-                'a',
-                attrs={'class': 'pep reference internal', 'href': True}
-            )['href']
             pep_status_key = select_one_tag(
-                pep, 'tr:nth-child(1) > td:nth-child(1) > abbr'
+                pep, 'td:nth-child(1) > abbr'
             ).text[1:]
-            pep_url = urljoin(PEPS_URL, href)
-            pep_soup = get_soup_by_url(session, pep_url)            
-            pep_status = select_one_tag(
-                pep_soup, '#pep-content > dl > dd:nth-child(4) > abbr'
-            ).text
-            peps_status_count[pep_status] += 1
+            pep_reference = select_one_tag(
+                pep,
+                'td:nth-child(2) > a[class="pep reference internal"][href]'
+            )
+            pep_number = pep_reference.text
+            pep_url = urljoin(PEPS_URL, pep_reference['href'])
             expected_status = EXPECTED_STATUS.get(pep_status_key, None)
+            if expected_status is None:
+                error_msg = (
+                    f'Невалидный ключ статуса PEP {pep_number}: '
+                    f'{pep_status_key}. '
+                    f'URL страницы PEP: {pep_url}'
+                )
+                raise PEPStatusKeyException(error_msg)
+            pep_soup = get_soup_by_url(session, pep_url)
+            pep_status = select_one_tag(
+                pep_soup,
+                '#pep-content > dl > dt:-soup-contains("Status") + dd > abbr'
+            ).text
             if pep_status not in expected_status:
                 logging.info(
-                    'Несовпадающие статусы:\n',
-                    f'{pep_url}\n',
-                    f'Статус в карточке: {pep_status}\n',
+                    f'Несовпадающие статусы: {pep_url}. '
+                    f'Статус в карточке: {pep_status}. '
                     f'Ожидаемые статусы: {expected_status}'
                 )
-            """
-            [
-                ('Статус', 'Количество'),
-                *sorted(results.items()),
-                ('Total', sum(results.values())),
-            ]
-            """
-        except Exception:
-            continue        
-    return None
+            if pep_status not in VALID_STATUS:
+                error_msg = (
+                    f'Невалидный статус PEP {pep_number} '
+                    f'в карточке: {pep_status}. '
+                    f'Страница PEP: {pep_url}'
+                )
+                raise PEPStatusNameException(error_msg)
+            peps_status_count[pep_status] += 1
+        except (
+            DOMQueryingException, ParserFindTagException, RequestException
+        ):
+            pass
+        except (PEPStatusNameException, PEPStatusKeyException) as exc:
+            logging.error(exc, stack_info=True)
+    return [
+        TABLE_HEADER_STATUS_COUNT,
+        *sorted(peps_status_count.items()),
+        (TABLE_FOOTER_STATUS_TOTAL, sum(peps_status_count.values())),
+    ]
 
 
 MODE_TO_FUNCTION = {
