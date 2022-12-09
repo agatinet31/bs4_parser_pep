@@ -43,7 +43,9 @@ def whats_new(session):
                 (version_link, h1.text, dl_text)
             )
         except (ParserFindTagException, RequestException):
-            pass
+            logging.exception(
+                f'Ошибка распарсивания информации о версии Python: {section}'
+            )
     return [TABLE_HEADER_WHATS_NEW] + results if results else results
 
 
@@ -111,7 +113,7 @@ def pep(session):
             )
             pep_number = pep_reference.text
             pep_url = urljoin(PEPS_URL, pep_reference['href'])
-            expected_status = EXPECTED_STATUS.get(pep_status_key, None)
+            expected_status = EXPECTED_STATUS.get(pep_status_key)
             if expected_status is None:
                 error_msg = (
                     f'Невалидный ключ статуса PEP {pep_number}: '
@@ -141,9 +143,11 @@ def pep(session):
         except (
             DOMQueryingException, ParserFindTagException, RequestException
         ):
-            pass
+            logging.exception(
+                f'Ошибка распарсивания документации PEP {pep_number}!'
+            )
         except (PEPStatusNameException, PEPStatusKeyException) as exc:
-            logging.error(exc, stack_info=True)
+            logging.exception(exc)
     return [
         TABLE_HEADER_STATUS_COUNT,
         *sorted(peps_status_count.items()),
